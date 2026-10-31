@@ -1,0 +1,49 @@
+services:
+
+  app:
+    build:
+      context: ./app
+
+    container_name: observability-app
+
+    ports:
+      - "8000:8000"
+
+    networks:
+      - observability
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+
+    container_name: observability-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus-config.yml"
+    ports:
+      - "9090:9090"
+
+    volumes:
+      - .\prometheus\prometheus.yml:/etc/prometheus/prometheus-config.yml:ro
+
+    depends_on:
+      - app
+
+    networks:
+      - observability
+
+  grafana:
+    image: grafana/grafana:11.4.0
+
+    container_name: observability-grafana
+
+    ports:
+      - "3000:3000"
+
+    depends_on:
+      - prometheus
+
+    networks:
+      - observability
+
+networks:
+  observability:
+    driver: bridge
