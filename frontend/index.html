@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Observability Demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 20px; }
+    input, button { padding: 8px; margin: 5px 0; }
+    .item { padding: 8px; border-bottom: 1px solid #eee; }
+  </style>
+</head>
+<body>
+  <h1>Notes App (Frontend + Backend + DB)</h1>
+  <div>
+    <input id="note" placeholder="Enter a note" size="40">
+    <button onclick="addNote()">Add Note</button>
+  </div>
+  <div id="notes"></div>
+
+  <script>
+    async function loadNotes() {
+      const res = await fetch('/api/notes');
+      const notes = await res.json();
+      document.getElementById('notes').innerHTML = notes
+        .map(n => `<div class="item">${n.content} <small>(${n.created_at})</small></div>`)
+        .join('');
+    }
+
+    async function addNote() {
+      const content = document.getElementById('note').value.trim();
+      if (!content) return;
+      await fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+      });
+      document.getElementById('note').value = '';
+      loadNotes();
+    }
+
+    loadNotes();
+  </script>
+</body>
+</html>
