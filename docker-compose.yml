@@ -1,48 +1,85 @@
 services:
-
+  # Existing observability app (unchanged)
   app:
     build:
       context: ./app
-
     container_name: observability-app
-
     ports:
       - "8000:8000"
-
     networks:
       - observability
 
+  # New Frontend (Nginx)
+  frontend:
+    build:
+      context: ./frontend
+    container_name: observability-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - observability
+
+  # New Backend (Python/Flask)
+  backend:
+    build:
+      context: ./backend
+    container_name: observability-backend
+    environment:
+      - DB_HOST=db
+      - DB_NAME=appdb
+      - DB_USER=appuser
+      - DB_PASSWORD=apppassword
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    networks:
+      - observability
+
+  # New Database (PostgreSQL)
+  db:
+    image: postgres:16-alpine
+    container_name: observability-db
+    environment:
+      - POSTGRES_DB=appdb
+      - POSTGRES_USER=appuser
+      - POSTGRES_PASSWORD=apppassword
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - observability
+
+  # Existing Prometheus
   prometheus:
     image: prom/prometheus:v3.1.0
-
     container_name: observability-prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus-config.yml"
     ports:
       - "9090:9090"
-
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus-config.yml:ro
-
     depends_on:
       - app
-
+      - backend
     networks:
       - observability
 
+  # Existing Grafana
   grafana:
     image: grafana/grafana:11.4.0
-
     container_name: observability-grafana
-
     ports:
       - "3000:3000"
-
     depends_on:
       - prometheus
-
     networks:
       - observability
+
+volumes:
+  pgdata:
 
 networks:
   observability:
