@@ -55,6 +55,7 @@ services:
   prometheus:
     image: prom/prometheus:v3.1.0
     container_name: observability-prometheus
+    hostname: prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus-config.yml"
     ports:
