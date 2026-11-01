@@ -1,4 +1,5 @@
 import os
+import time
 import logging
 from datetime import datetime
 from flask import Flask, request, jsonify
@@ -20,20 +21,27 @@ def get_db():
         password=os.getenv('DB_PASSWORD', 'apppassword')
     )
 
-def init_db():
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS notes (
-            id SERIAL PRIMARY KEY,
-            content TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.commit()
-    cur.close()
-    conn.close()
-    logger.info("Database initialized")
+def init_db(retries=15, delay=2):
+    for attempt in range(retries):
+        try:
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS notes (
+                    id SERIAL PRIMARY KEY,
+                    content TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.commit()
+            cur.close()
+            conn.close()
+            logger.info("Database initialized successfully")
+            return
+        except psycopg2.OperationalError as e:
+            logger.warning(f"Database not ready (attempt {attempt + 1}/{retries}): {e}")
+            time.sleep(delay)
+    raise Exception("Could not connect to database after multiple retries")
 
 @app.route('/notes', methods=['GET'])
 @REQUEST_LATENCY.time()
