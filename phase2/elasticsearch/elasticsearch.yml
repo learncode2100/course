@@ -1,0 +1,13 @@
+cluster.name: observability-training
+
+node.name: elasticsearch
+
+discovery.type: single-node
+
+xpack.security.enabled: false
+
+xpack.security.enrollment.enabled: false
+
+network.host: 0.0.0.0
+
+http.port: 9200

@@ -1,0 +1,28 @@
+filebeat.inputs:
+
+  - type: filestream
+
+    id: observability-application-logs
+
+    enabled: true
+
+    paths:
+      - /logs/application.log
+
+    fields:
+      source_type: fastapi
+      application: order-service
+      environment: training
+
+    fields_under_root: true
+
+
+output.logstash:
+
+  hosts:
+    - "logstash:5044"
+
+
+logging.level: info
+
+logging.to_stderr: true
