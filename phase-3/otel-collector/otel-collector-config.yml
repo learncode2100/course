@@ -1,0 +1,53 @@
+receivers:
+
+  otlp:
+
+    protocols:
+
+      grpc:
+        endpoint: 0.0.0.0:4316
+
+      http:
+        endpoint: 0.0.0.0:4319
+
+
+processors:
+
+  batch:
+
+
+exporters:
+
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+  debug:
+    verbosity: basic
+
+
+extensions:
+
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+
+service:
+
+  extensions:
+    - health_check
+
+  pipelines:
+
+    traces:
+
+      receivers:
+        - otlp
+
+      processors:
+        - batch
+
+      exporters:
+        - otlp/jaeger
+        - debug

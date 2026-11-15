@@ -1,0 +1,225 @@
+services:
+
+
+  # ==================================================
+  # FastAPI Application
+  # ==================================================
+
+  app:
+
+    build:
+      context: ./app
+
+    container_name: observability-app-phase3
+
+    ports:
+      - "8000:8000"
+
+    environment:
+
+      OTEL_SERVICE_NAME:
+        order-service
+
+      OTEL_RESOURCE_ATTRIBUTES:
+        service.version=3.0.0,deployment.environment.name=training
+
+    volumes:
+
+      - app_logs:/logs
+
+    depends_on:
+
+      - otel-collector
+
+    networks:
+
+      - observability
+
+
+  # ==================================================
+  # OpenTelemetry Collector
+  # ==================================================
+
+  otel-collector:
+
+    image: otel/opentelemetry-collector-contrib:0.143.0
+
+    container_name: observability-otel-collector
+
+    command:
+      - "--config=/etc/otelcol-contrib/otel-collector-config.yml"
+
+    volumes:
+
+      - ./otel-collector/otel-collector-config.yml:/etc/otelcol-contrib/otel-collector-config.yml:ro
+
+    ports:
+
+      - "4316:4316"
+
+      - "4319:4319"
+
+      - "13133:13133"
+
+    depends_on:
+
+      - jaeger
+
+    networks:
+
+      - observability
+
+
+  # ==================================================
+  # Jaeger
+  # ==================================================
+
+  jaeger:
+
+    image: cr.jaegertracing.io/jaegertracing/jaeger:2.21.0
+
+    container_name: observability-jaeger
+
+    ports:
+
+      - "16686:16686"
+
+      - "4317:4317"
+
+      - "4318:4318"
+
+    networks:
+
+      - observability
+
+
+  # ==================================================
+  # Elasticsearch
+  # ==================================================
+
+  elasticsearch:
+
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
+
+    container_name: observability-elasticsearch-phase3
+
+    environment:
+
+      - discovery.type=single-node
+
+      - xpack.security.enabled=false
+
+      - xpack.security.enrollment.enabled=false
+
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+
+    ports:
+
+      - "9200:9200"
+
+    volumes:
+
+      - elasticsearch_data:/usr/share/elasticsearch/data
+
+    networks:
+
+      - observability
+
+
+  # ==================================================
+  # Logstash
+  # ==================================================
+
+  logstash:
+
+    image: docker.elastic.co/logstash/logstash:8.17.0
+
+    container_name: observability-logstash-phase3
+
+    ports:
+
+      - "5044:5044"
+
+    volumes:
+
+      - ./logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+
+    depends_on:
+
+      - elasticsearch
+
+    networks:
+
+      - observability
+
+
+  # ==================================================
+  # Filebeat
+  # ==================================================
+
+  filebeat:
+
+    image: docker.elastic.co/beats/filebeat:9.5.5
+    
+    container_name: observability-filebeat
+
+    user: root
+    command: ["--environment", "container", "--strict.perms=false"]
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - app_logs:/logs:ro
+
+    depends_on:
+      - logstash
+
+    networks:
+      - observability
+
+
+  # ==================================================
+  # Kibana
+  # ==================================================
+
+  kibana:
+
+    image: docker.elastic.co/kibana/kibana:8.17.0
+
+    container_name: observability-kibana-phase3
+
+    environment:
+
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+
+    ports:
+
+      - "5601:5601"
+
+    depends_on:
+
+      - elasticsearch
+
+    networks:
+
+      - observability
+
+
+# ==================================================
+# Volumes
+# ==================================================
+
+volumes:
+
+  app_logs:
+
+  elasticsearch_data:
+
+
+# ==================================================
+# Network
+# ==================================================
+
+networks:
+
+  observability:
+
+    driver: bridge
